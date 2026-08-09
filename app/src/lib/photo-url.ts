@@ -34,10 +34,19 @@ export function getCloudinaryDisplayUrl(urlValue: string | null | undefined): st
     const uploadIndex = url.pathname.indexOf(uploadMarker);
     if (uploadIndex < 0) return null;
 
+    // Keep only the version and asset path. This removes upload-time delivery
+    // transformations such as c_fill, w_*, and h_* that can force every card
+    // into the same cropped aspect ratio.
     const pathAfterUpload = url.pathname.slice(uploadIndex + uploadMarker.length);
-    if (pathAfterUpload.startsWith('f_auto,q_auto/')) return normalized;
+    const pathSegments = pathAfterUpload.split('/').filter(Boolean);
+    const versionIndex = pathSegments.findIndex((segment) => /^v\\d+$/.test(segment));
+    const assetPath = versionIndex >= 0
+      ? pathSegments.slice(versionIndex).join('/')
+      : pathSegments[pathSegments.length - 1];
 
-    url.pathname = `${url.pathname.slice(0, uploadIndex + uploadMarker.length)}f_auto,q_auto/${pathAfterUpload}`;
+    if (!assetPath) return null;
+
+    url.pathname = `${url.pathname.slice(0, uploadIndex + uploadMarker.length)}f_auto,q_auto/${assetPath}`;
     return url.toString();
   } catch {
     return null;

@@ -730,9 +730,8 @@ h4, h5, h6 {
 
 .photo-card img {
   width: 100%;
+  height: auto;
   display: block;
-  object-fit: cover;
-  transition: transform var(--transition-slow);
 }
 
 .photo-card:hover {
@@ -745,23 +744,15 @@ h4, h5, h6 {
   border-color: rgba(245, 158, 11, 0.4);
 }
 
-.photo-card:hover img {
-  transform: scale(1.06);
-}
-
 .photo-card-overlay {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
+  inset: auto 0 0;
+  min-height: 72px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.35), transparent);
   display: flex;
   align-items: flex-end;
-  padding: 16px;
-}
-
-.photo-card:hover .photo-card-overlay {
-  opacity: 1;
+  padding: 28px 16px 14px;
+  pointer-events: none;
 }
 
 .photo-card-info { color: white; }
