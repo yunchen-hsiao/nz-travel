@@ -259,3 +259,83 @@ node scripts/import_expenses_csv.mjs data/expenses_template.csv → 成功解析
 - 店家排行榜、品項單價變化、分類 × 時間堆疊圖尚未實作。
 - 城市維度花費需要 `expenses` 新增城市欄位或用日期推斷，尚未決定做法。
 - 預算對比曲線需要使用者提供預算數字。
+
+---
+
+## 2026-08-09 — 地圖大改版：雙地圖分島 + 城市聚合標記
+
+### 背景
+原本只有單一全紐西蘭地圖，南北島比例差距大，加上景點分佈不均，導致點位密集難以辨識。
+
+### 變更摘要
+
+**雙地圖並排（南島 / 北島）**
+- `MapComponent.tsx` 重構：單一 `mapRef` 改為 `northMapRef` / `southMapRef`，`mapInstancesRef` 改為 `Partial<Record<Island, L.Map>>`。
+- 地圖容器改用 CSS Grid `1fr 1fr` 並排，各自以 `maxBounds` 鎖定南、北島邊界。
+- `ResizeObserver` + `hasSettled` 機制：避免 CSS Grid 未確定尺寸時 `fitBounds()` 鎖入錯誤縮放層級。
+
+**城市聚合標記（展開 / 收合）**
+- 從 Supabase 拉取 `cities` 表（原本只拉 `spots`），用 `city.lat > -41.5` 判斷南北島歸屬。
+- 預設顯示每座城市的圓形計數標記（顯示符合篩選條件的地點數）；點擊後展開該城市所有地點的個別標記，再點一次收合。
+- `expandedCityIds: Set<string>` 管理展開狀態；計數標記圖示依狀態切換顏色與符號（數字 / `−`）。
+- 展開城市時用 `flyToBounds` / `flyTo` 飛入對焦，讓密集地點自動拉開。
+
+**`citiesRef` 解決 stale closure**
+- 地圖點擊 handler 在空 deps effect 中只注冊一次，直接讀 `cities` state 會拿到 stale 初始值；改用 `citiesRef` 同步當前 `cities`，handler 讀 ref。
+
+**`hasValidCoordinates` 型別守衛**
+- 新增 helper，過濾 `lat` / `lng` 為 `null` 或 `NaN` 的城市與地點資料，避免 Leaflet 收到無效座標崩潰。
+
+**新增地點時自動帶入最近城市**
+- 點擊地圖新增地點時，用平方距離近似法 `findNearestCity()` 自動找最近城市，傳入 `SpotFormModal` 的 `cityId` prop。
+- `SpotFormModal` 補上 `cityId: string` prop 並寫入 `INSERT` 語句。
+
+**地點篩選面板說明文字**
+- 篩選面板新增一行說明文字，解釋圓點數字的含義與點擊展開的互動方式。
+
+### Bug 修正
+- `createCityCountIcon` 中 expanded 狀態背景色原寫 `var(--color-trip1)`（不存在的 CSS 變數），修正為 `var(--color-primary)`。
+
+### 驗證結果
+```
+npm run lint   → 0 errors, 0 warnings
+npm run build  → Compiled successfully（Next.js 16, Turbopack, 7 routes）
+```
+
+### 修改的檔案
+| 類型 | 檔案 |
+|---|---|
+| 修改 | `app/src/components/MapComponent.tsx` |
+| 修改 | `app/src/components/SpotFormModal.tsx` |
+
+---
+
+## 2026-08-09 — 首頁統計卡「總花費」數字溢出修正 + 改為台幣加總顯示
+
+### 背景
+首頁 `.stat-card` 使用固定 `minmax(200px, 1fr)` 的 Grid 欄，而 `.stat-number` 字體為固定 `48px`；「≈NT$267,600」等長金額字串超出 200px 容器，被 `overflow: hidden` 截斷。
+
+同一次改動也把首頁「總花費」從雙幣別拆分顯示（`NZ$xx + NT$xx`）改為全部換算成台幣加總（與 `/ledger` 頁「顯示為台幣」模式一致，只有紐幣的項目用歷史匯率概算）。
+
+### 變更摘要
+- `globals.css`：
+  - `.stat-number` 字體從固定 `48px` → `clamp(24px, 8vw, 48px)`，讓字體隨容器寬度自適應縮小。
+  - 補上 `overflow-wrap: break-word` / `word-break: break-word` 作為極端情況的安全網。
+  - `@media (max-width: 480px)` 中的 `.stat-number` 從固定 `38px` → `clamp(20px, 7vw, 32px)`。
+- `page.tsx`：
+  - 匯入由 `formatSplitTotal + splitTotal` 改為 `buildRateMap + formatTWD + sumAsTwd`。
+  - 費用查詢改為 `Promise.all` 同時抓 `expenses` 與 `exchange_rates`。
+  - 統計卡 `sub` 欄位由 `'NZD+TWD'` 改為 `'TWD'`。
+
+### 驗證結果
+```
+npm run lint   → 0 errors, 0 warnings
+npm run build  → Compiled successfully
+```
+
+### 修改的檔案
+| 類型 | 檔案 |
+|---|---|
+| 修改 | `app/src/app/globals.css` |
+| 修改 | `app/src/app/page.tsx` |
+

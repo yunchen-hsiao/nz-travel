@@ -65,7 +65,7 @@ const hasValidCoordinates = (location: { lat: unknown; lng: unknown } | null | u
 // individual spots are visible on the map.
 const createCityCountIcon = (count: number, isExpanded: boolean) => L.divIcon({
   html: `<div style="
-    background: ${isExpanded ? 'var(--color-trip1)' : 'var(--color-accommodation)'};
+    background: ${isExpanded ? 'var(--color-primary)' : 'var(--color-accommodation)'};
     border: 3px solid white;
     border-radius: 50%;
     min-width: 38px; height: 38px;

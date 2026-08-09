@@ -4,11 +4,12 @@
 
 ## ✨ 主要功能 (Features)
 
-- 📊 **首頁儀表板 (Dashboard)**：即時連動資料庫，自動計算旅行天數、走訪城市、打卡景點數與總花費。
+- 📊 **首頁儀表板 (Dashboard)**：即時連動資料庫，自動計算旅行天數、走訪城市、打卡景點數與總花費（全部換算為台幣加總顯示，只有紐幣紀錄的項目用歷史匯率概算並標記 ≈）。
 - 🗺️ **足跡地圖 (Interactive Map)**：
-  - 基於 Leaflet 打造的動態地圖。
-  - 將景點分為「住宿、景點、餐廳、其他」，點擊標記即可滑出專屬資訊側欄。
-  - 結合真實座標 (Lat/Lng) 重現旅途軌跡。
+  - 基於 Leaflet 打造的動態地圖，**南島 / 北島並排雙地圖**顯示，各自鎖定範圍、獨立縮放。
+  - 以**城市聚合標記**呈現地點：圓形標記顯示該城市符合篩選條件的地點數，點擊展開個別地點並飛入對焦，再點一次收合。
+  - 將景點分為「住宿、景點、餐廳、其他」，點擊地點標記可滑出資訊側欄（含說明與照片）。
+  - 管理員點擊地圖任意位置可快速新增地點，自動帶入最近城市。
 - 💸 **記帳分析 (Ledger)**：
   - 詳細記錄每一筆開銷（支援綁定至特定日期與店家），單筆可同時記錄紐幣、台幣金額。
   - **雙幣別總額計算**：有台幣紀錄的支出算作台幣、只有紐幣紀錄的算作紐幣，總花費預設拆分顯示成「NZ$xx + NT$xx」；也可切換成「全部顯示為台幣」，只有紐幣的項目會用當天的歷史匯率概算（標記 ≈）。
@@ -54,7 +55,7 @@ CLOUDINARY_API_SECRET=你的_API_Secret
 ### 3. 資料庫初始化 (Supabase)
 > ⚠️ **注意**：目前 repo 中**沒有**完整的初始 Table Schema / RLS 建置 SQL 檔案，且 `data/` 目錄已被 `.gitignore` 排除、不在版本控制內。若你是全新 clone 這個專案，下方提到的 seed 檔案不會存在，需要自行建立 Schema 後手動整理資料（或向專案維護者索取）。詳細追蹤狀態請見 `implementation.md` 的 1.2 / 1.3 項目。
 
-1. 依照下列資料表結構在 Supabase 建立 Table 與 Row Level Security (RLS)（可參考 `data/implementation_plan1.md`、`data/implementation_plan2.md` 的設計文件，或現有程式碼中 `app/src/lib/types.ts` 定義的欄位）：
+1. 依照下列資料表結構在 Supabase 建立 Table 與 Row Level Security (RLS)（可參考現有程式碼中 `app/src/lib/types.ts` 定義的欄位）：
    - `trips`（id, name, start_date, end_date）
    - `cities`（id, trip_id, name, order, lat, lng）
    - `spots`（id, city_id, type, name, visited_date, description, lat, lng）
