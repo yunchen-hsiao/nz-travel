@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '../lib/supabase/server';
-import { formatSplitTotal, splitTotal } from '../lib/money';
+import { buildRateMap, formatTWD, sumAsTwd } from '../lib/money';
 
 // ── SVG Icon Components ──────────────────────────
 function IconCalendar() {
@@ -106,16 +106,22 @@ export default async function Home() {
     .from('spots')
     .select('*', { count: 'exact', head: true });
 
-  // 4. Total expenses — 有台幣紀錄就算台幣，只有紐幣就算紐幣，兩者都可能同時出現
-  //    （例如 "NZ$1,234.56 + NT$56,000"），跟 /ledger 頁面的計算規則一致。
-  const { data: expenses } = await supabase.from('expenses').select('date, amount_nzd, amount_twd');
-  const formattedExpense = expenses ? formatSplitTotal(splitTotal(expenses)) : 'NZ$0.00';
+  // 4. Total expenses — 全部換算成台幣加總：已有台幣紀錄的直接採用真實金額，
+  //    只有紐幣紀錄的用當天（或最接近日期）的歷史匯率概算，跟 /ledger 頁面
+  //    「顯示為台幣」模式的計算規則一致。
+  const [{ data: expenses }, { data: rates }] = await Promise.all([
+    supabase.from('expenses').select('date, amount_nzd, amount_twd'),
+    supabase.from('exchange_rates').select('*'),
+  ]);
+  const rateMap = buildRateMap(rates ?? []);
+  const totalIsEstimated = (expenses ?? []).some((e) => e.amount_twd === null && e.amount_nzd !== null);
+  const formattedExpense = expenses ? formatTWD(sumAsTwd(expenses, rateMap), totalIsEstimated) : formatTWD(0);
 
   const stats = [
     { value: days,             label: '旅行天數', sub: 'Days',    icon: <IconCalendar /> },
     { value: citiesCount || 0, label: '走訪城市', sub: 'Cities',  icon: <IconCity /> },
     { value: spotsCount || 0,  label: '打卡景點', sub: 'Spots',   icon: <IconMapPin /> },
-    { value: formattedExpense, label: '總花費',   sub: 'NZD+TWD', icon: <IconWallet /> },
+    { value: formattedExpense, label: '總花費',   sub: 'TWD',     icon: <IconWallet /> },
   ];
 
   const navCards = [

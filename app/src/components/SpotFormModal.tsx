@@ -10,10 +10,11 @@ interface SpotFormModalProps {
   onClose: () => void;
   lat: number;
   lng: number;
+  cityId: string;
   onSuccess: () => void;
 }
 
-export function SpotFormModal({ isOpen, onClose, lat, lng, onSuccess }: SpotFormModalProps) {
+export function SpotFormModal({ isOpen, onClose, lat, lng, cityId, onSuccess }: SpotFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -44,6 +45,7 @@ export function SpotFormModal({ isOpen, onClose, lat, lng, onSuccess }: SpotForm
           type,
           lat,
           lng,
+          city_id: cityId,
           visited_date: date,
           description: desc,
         })
