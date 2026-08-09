@@ -9,6 +9,7 @@ import { Sidebar } from './ui/Sidebar';
 import { SpotFormModal } from './SpotFormModal';
 import { createClient } from '../lib/supabase/client';
 import type { City, Photo, Spot, SpotType } from '../lib/types';
+import { getCloudinaryDisplayUrl, getCloudinaryPhotoUrl, getPhotoUrls } from '../lib/photo-url';
 
 type Island = 'north' | 'south';
 
@@ -363,11 +364,41 @@ export default function MapComponent() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h4 style={{ margin: 0 }}>📸 照片記錄</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {selectedSpotPhotos.map((photo) => (
-                    <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden' }}>
-                      <Image src={photo.cloudinary_url} alt="" fill sizes="200px" style={{ objectFit: 'cover' }} />
-                    </div>
-                  ))}
+                  {selectedSpotPhotos.map((photo) => {
+                    const imageUrls = getPhotoUrls(
+                      getCloudinaryDisplayUrl(photo.cloudinary_url),
+                      getCloudinaryDisplayUrl(photo.original_url),
+                      getCloudinaryPhotoUrl(photo.cloudinary_public_id),
+                    );
+                    const imageUrl = imageUrls[0];
+
+                    return (
+                      <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden' }}>
+                        {imageUrl ? (
+                          <Image
+                            src={imageUrl}
+                            alt=""
+                            fill
+                            sizes="200px"
+                            style={{ objectFit: 'cover' }}
+                            data-photo-url-index="0"
+                            onError={(event) => {
+                              const currentIndex = Number(event.currentTarget.dataset.photoUrlIndex ?? 0);
+                              const nextUrl = imageUrls[currentIndex + 1];
+                              if (nextUrl) {
+                                event.currentTarget.dataset.photoUrlIndex = String(currentIndex + 1);
+                                event.currentTarget.src = nextUrl;
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span style={{ display: 'grid', height: '100%', placeItems: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                            圖片網址無效
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (

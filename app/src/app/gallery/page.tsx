@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createClient } from '../../lib/supabase/client';
 import UploadPhotoModal from '../../components/UploadPhotoModal';
 import type { Photo } from '../../lib/types';
+import { getCloudinaryDisplayUrl, getCloudinaryPhotoUrl, getPhotoUrls } from '../../lib/photo-url';
 
 export default function GalleryPage() {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -68,6 +69,16 @@ export default function GalleryPage() {
   const filteredPhotos = filterSpotId === 'all'
     ? photos
     : photos.filter(p => p.spots?.id === filterSpotId);
+  const selectedPhotoUrl = selectedPhoto
+    ? getPhotoUrls(
+      getCloudinaryDisplayUrl(selectedPhoto.cloudinary_url),
+      getCloudinaryDisplayUrl(selectedPhoto.original_url),
+      getCloudinaryPhotoUrl(selectedPhoto.cloudinary_public_id),
+    )[0] ?? null
+    : null;
+  const selectedPhotoDownloadUrl = selectedPhoto
+    ? getPhotoUrls(selectedPhoto.original_url, selectedPhoto.cloudinary_url)[0] ?? null
+    : null;
 
   return (
     <div
@@ -211,21 +222,38 @@ export default function GalleryPage() {
               className="photo-card"
               onClick={() => setSelectedPhoto(photo)}
             >
-              {/*
-                Masonry layout relies on each photo's natural (and varying)
-                aspect ratio to produce the staggered grid effect, and the
-                `photos` table doesn't store width/height. `next/image`
-                requires either a fixed width+height or a `fill` parent with
-                a known aspect ratio, either of which would force-crop these
-                photos and break the masonry look. Deliberately kept as a
-                plain <img>; see implementation.md ("next/image" section).
-              */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo.cloudinary_url}
-                alt={photo.caption || '旅行照片'}
-                loading="lazy"
-              />
+              {(() => {
+                const imageUrls = getPhotoUrls(
+                  getCloudinaryDisplayUrl(photo.cloudinary_url),
+                  getCloudinaryDisplayUrl(photo.original_url),
+                  getCloudinaryPhotoUrl(photo.cloudinary_public_id),
+                );
+                const imageUrl = imageUrls[0];
+
+                return imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt={photo.caption || '旅行照片'}
+                    loading="lazy"
+                    data-photo-url-index="0"
+                    onError={(event) => {
+                      const currentIndex = Number(event.currentTarget.dataset.photoUrlIndex ?? 0);
+                      const nextUrl = imageUrls[currentIndex + 1];
+                      if (nextUrl) {
+                        event.currentTarget.dataset.photoUrlIndex = String(currentIndex + 1);
+                        event.currentTarget.src = nextUrl;
+                      } else {
+                        event.currentTarget.alt = `${photo.caption || '旅行照片'}（圖片無法載入）`;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div style={{ padding: '24px 12px', color: 'var(--text-muted)', textAlign: 'center', fontSize: '13px' }}>
+                    圖片網址無效
+                  </div>
+                );
+              })()}
               <div className="photo-card-overlay">
                 <div className="photo-card-info">
                   <h4>{photo.spots?.name || '未知景點'}</h4>
@@ -248,35 +276,41 @@ export default function GalleryPage() {
             ✕
           </button>
 
-          <Image
-            src={selectedPhoto.original_url || selectedPhoto.cloudinary_url}
-            alt={selectedPhoto.caption || '旅行照片'}
-            className="lightbox-img"
-            width={1600}
-            height={1200}
-            sizes="90vw"
-            style={{ width: 'auto', height: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          />
+          {selectedPhotoUrl ? (
+            <Image
+              src={selectedPhotoUrl}
+              alt={selectedPhoto?.caption || '旅行照片'}
+              className="lightbox-img"
+              width={1600}
+              height={1200}
+              sizes="90vw"
+              style={{ width: 'auto', height: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <p style={{ color: 'white' }}>圖片網址無效</p>
+          )}
 
           <div className="lightbox-controls" onClick={(e) => e.stopPropagation()}>
-            <a
-              href={selectedPhoto.original_url || selectedPhoto.cloudinary_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary"
-              style={{
-                boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              下載原圖
-            </a>
+            {selectedPhotoDownloadUrl && (
+              <a
+                href={selectedPhotoDownloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                下載原圖
+              </a>
+            )}
           </div>
         </div>
       )}
